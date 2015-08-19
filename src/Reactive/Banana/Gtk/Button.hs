@@ -3,6 +3,8 @@ module Reactive.Banana.Gtk.Button
     Button, button,
     -- ** Signals
     clicked,
+    -- ** Attributes
+    useStock,
     -- * Implementation Details
     IsButton
   ) where
@@ -43,11 +45,13 @@ clicked button =
   buttonClicked (buttonSignals button)
 
 button :: (Monoid widget,Frameworks t, c Gtk.Button)
-       => Gtk Gtk.WidgetClass (Last Gtk.Widget) t ()
+       => Attribute Gtk.Button t ()
+       -> Gtk Gtk.WidgetClass (Last Gtk.Widget) t ()
        -> Gtk c widget t (Button t)
-button mkChildren =
+button attributes mkChildren =
   do widget <-
        liftIO (unsafeInterleaveIO Gtk.buttonNew)
+     rb (applyAttributes attributes widget)
      children <-
        bin (pure . Gtk.toWidget) mkChildren
      rb (do initialChildren <- initial children
@@ -70,3 +74,7 @@ listenButtonSignals widget =
              Gtk.on widget Gtk.buttonActivated (fireClick ())
            return ())
      return ButtonSignals {..}
+
+-- TODO Deprecated, so I should remove this
+useStock :: Gtk.ButtonClass self => Gtk.Attr self Bool
+useStock = Gtk.buttonUseStock

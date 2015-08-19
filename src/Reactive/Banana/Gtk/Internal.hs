@@ -15,7 +15,7 @@ import Control.Monad.Writer (MonadWriter, tell)
 import Control.Applicative
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT, mapReaderT, withReaderT)
-import Control.Monad.Trans.Writer.Strict (WriterT, execWriterT, mapWriterT)
+import Control.Monad.Trans.Writer.Strict (WriterT, execWriterT, mapWriterT, Writer)
 import Reactive.Banana (Behavior, Moment, Event, stepper)
 import Data.Foldable (traverse_, for_)
 import Reactive.Banana.Frameworks
@@ -38,33 +38,11 @@ bin cast mkChildren =
 
 newtype Gtk c widget t a =
   Gtk {unGtk :: ReaderT (Cast c widget) (WriterT (Behavior t widget) (Moment t)) a}
+  deriving (Functor, Applicative, Monad, MonadWriter (Behavior t widget), MonadReader (Cast c widget), MonadFix, MonadIO)
 
 instance (a ~ (), Monoid widget) => Monoid (Gtk c widget t a) where
   mempty = return ()
   mappend = (>>)
-
-instance Functor (Gtk c widget t) where
-  fmap f (Gtk m) = Gtk (fmap f m)
-
-instance Monoid widget => Applicative (Gtk c widget t) where
-  pure a = Gtk (pure a)
-  Gtk f <*> Gtk a = Gtk (f <*> a)
-
-instance Monoid widget => Monad (Gtk c widget t) where
-  return a = Gtk (pure a)
-  Gtk a >>= f = Gtk (a >>= unGtk . f)
-
-instance Monoid widget => MonadWriter (Behavior t widget) (Gtk c widget t) where
-  tell x = Gtk (tell x)
-
-instance Monoid widget => MonadReader (Cast c widget) (Gtk c widget t) where
-  ask = Gtk ask
-
-instance Monoid widget => MonadFix (Gtk c widget t) where
-  mfix f = Gtk (mfix (unGtk . f))
-
-instance (Monoid widget,Frameworks t) => MonadIO (Gtk c widget t) where
-  liftIO io = Gtk (liftIO io)
 
 instance Monoid a => Monoid (Behavior t a) where
   mempty = pure mempty
@@ -72,3 +50,21 @@ instance Monoid a => Monoid (Behavior t a) where
 
 rb :: Monoid widget => Moment t a -> Gtk c widget t a
 rb m = Gtk (lift (lift m))
+
+-- TODO This doesn't allow you to 'remove' an attribute, which should set it back to its default.
+newtype Attribute widget t a =
+  Attribute {unAttributes :: ReaderT widget (Moment t) a}
+  deriving (Functor,Monad,Applicative,MonadIO, MonadReader widget)
+
+(<~)
+  :: Frameworks t
+  => Gtk.Attr widget value -> Behavior t value -> Attribute widget t ()
+attr <~ value =
+  do widget <- ask
+     Attribute (lift (do initialValue <- initial value
+                         liftIOLater
+                           (Gtk.set widget [attr Gtk.:= initialValue])))
+
+applyAttributes :: Attribute widget t a -> widget -> Moment t a
+applyAttributes (Attribute m) widget =
+  runReaderT m widget
