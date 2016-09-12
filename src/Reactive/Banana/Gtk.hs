@@ -10,7 +10,7 @@ import Control.Monad.Trans.Reader (ReaderT, runReaderT, mapReaderT, withReaderT)
 import Control.Monad.Trans.Writer.Strict (WriterT, execWriterT, mapWriterT, Writer)
 import Data.Foldable (traverse_, for_)
 
-type GtkApp = forall t. (Frameworks t) => Gtk Gtk.WidgetClass (Last Gtk.Widget) t ()
+type GtkApp = Gtk Gtk.WidgetClass (Last Gtk.Widget) ()
 
 runGtk :: GtkApp -> IO ()
 runGtk builder =
@@ -22,7 +22,7 @@ runGtk builder =
                        (runReaderT (unGtk builder)
                                    (Cast (pure . Gtk.toWidget)))
                    childrenChanged <- changes children
-                   initialChildren <- initial children
+                   initialChildren <- valueBLater children
                    liftIOLater
                      (do traverse_ (Gtk.containerAdd gtkWindow)
                                    (getLast initialChildren)

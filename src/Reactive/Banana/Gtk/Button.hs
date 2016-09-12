@@ -19,16 +19,16 @@ import Reactive.Banana.Gtk.Widget
 import System.IO.Unsafe (unsafeInterleaveIO)
 import qualified Graphics.UI.Gtk as Gtk
 
-data Button t =
+data Button =
   Button {buttonWidget :: Gtk.Button
-         ,buttonButtonSignals :: ButtonSignals t
-         ,buttonContainerSignals :: ContainerSignals t
-         ,buttonWidgetSignals :: WidgetSignals t}
+         ,buttonButtonSignals :: ButtonSignals
+         ,buttonContainerSignals :: ContainerSignals
+         ,buttonWidgetSignals :: WidgetSignals}
 
-data ButtonSignals t = ButtonSignals { buttonClicked :: Event t () }
+data ButtonSignals = ButtonSignals { buttonClicked :: Event () }
 
 class IsButton a where
-  buttonSignals :: a t -> ButtonSignals t
+  buttonSignals :: a -> ButtonSignals
 
 instance IsButton Button where
   buttonSignals = buttonButtonSignals
@@ -40,21 +40,21 @@ instance IsWidget Button where
   widgetSignals = buttonWidgetSignals
 
 clicked :: IsButton button
-        => button t -> Event t ()
+        => button -> Event ()
 clicked button =
   buttonClicked (buttonSignals button)
 
-button :: (Monoid widget,Frameworks t, c Gtk.Button)
-       => Attribute Gtk.Button t ()
-       -> Gtk Gtk.WidgetClass (Last Gtk.Widget) t ()
-       -> Gtk c widget t (Button t)
+button :: (Monoid widget, c Gtk.Button)
+       => Attribute Gtk.Button ()
+       -> Gtk Gtk.WidgetClass (Last Gtk.Widget) ()
+       -> Gtk c widget Button
 button attributes mkChildren =
   do widget <-
        liftIO (unsafeInterleaveIO Gtk.buttonNew)
      rb (applyAttributes attributes widget)
      children <-
        bin (pure . Gtk.toWidget) mkChildren
-     rb (do initialChildren <- initial children
+     rb (do initialChildren <- valueBLater children
             liftIOLater
               (do traverse_ (Gtk.containerAdd widget)
                             (getLast initialChildren)
@@ -65,8 +65,8 @@ button attributes mkChildren =
          listenWidgetSignals widget)
 
 listenButtonSignals
-  :: (Gtk.ButtonClass button,Frameworks t)
-  => button -> Moment t (ButtonSignals t)
+  :: (Gtk.ButtonClass button)
+  => button -> MomentIO ButtonSignals
 listenButtonSignals widget =
   do (buttonClicked,fireClick) <- newEvent
      liftIOLater

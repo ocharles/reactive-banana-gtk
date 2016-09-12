@@ -8,10 +8,10 @@ import Reactive.Banana.Gtk.Internal
 import System.IO.Unsafe (unsafeInterleaveIO)
 import qualified Graphics.UI.Gtk as Gtk
 
-data ContainerSignals t = ContainerSignals
+data ContainerSignals = ContainerSignals
 
 class IsContainer a where
-  containerSignals :: a t -> ContainerSignals t
+  containerSignals :: a -> ContainerSignals
 
-listenContainerSignals :: Gtk.ContainerClass widget => widget -> Moment t (ContainerSignals t)
+listenContainerSignals :: Gtk.ContainerClass widget => widget -> MomentIO ContainerSignals
 listenContainerSignals _ = return ContainerSignals

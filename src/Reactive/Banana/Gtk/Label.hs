@@ -17,15 +17,15 @@ import Reactive.Banana.Gtk.Widget
 import System.IO.Unsafe (unsafeInterleaveIO)
 import qualified Graphics.UI.Gtk as Gtk
 
-data Label t =
+data Label =
   Label {labelWidget :: Gtk.Label
-        ,labelLabelSignals :: LabelSignals t
-        ,labelWidgetSignals :: WidgetSignals t}
+        ,labelLabelSignals :: LabelSignals
+        ,labelWidgetSignals :: WidgetSignals}
 
-data LabelSignals t = LabelSignals {}
+data LabelSignals = LabelSignals {}
 
 class IsLabel a where
-  labelSignals :: a t -> LabelSignals t
+  labelSignals :: a -> LabelSignals
 
 instance IsLabel Label where
   labelSignals = labelLabelSignals
@@ -33,15 +33,15 @@ instance IsLabel Label where
 instance IsWidget Label where
   widgetSignals = labelWidgetSignals
 
-label :: (Monoid widget,Frameworks t, c Gtk.Label)
-       => Attribute Gtk.Label t ()
-       -> Behavior t String
-       -> Gtk c widget t (Label t)
+label :: (Monoid widget, c Gtk.Label)
+       => Attribute Gtk.Label ()
+       -> Behavior String
+       -> Gtk c widget Label
 label attributes contents =
   do widget <-
        liftIO (unsafeInterleaveIO (Gtk.labelNew (Nothing :: Maybe String)))
      rb (applyAttributes attributes widget)
-     rb (do initialContents <- initial contents
+     rb (do initialContents <- valueBLater contents
             liftIOLater
               (do Gtk.labelSetText widget initialContents
                   Gtk.widgetShow widget))
@@ -50,10 +50,10 @@ label attributes contents =
          listenWidgetSignals widget)
 
 listenLabelSignals
-  :: (Gtk.LabelClass label,Frameworks t)
-  => label -> Moment t (LabelSignals t)
+  :: (Gtk.LabelClass label)
+  => label -> MomentIO LabelSignals
 listenLabelSignals widget =
   do return LabelSignals {}
 
-instance (a ~ Label t, c Gtk.Label, Frameworks t, Monoid widget) => IsString (Gtk c widget t a) where
+instance (a ~ Label, c Gtk.Label, Monoid widget) => IsString (Gtk c widget a) where
   fromString = label (return ()) . pure
