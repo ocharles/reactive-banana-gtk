@@ -8,13 +8,13 @@ import Reactive.Banana.Gtk.Internal
 import System.IO.Unsafe (unsafeInterleaveIO)
 import qualified Graphics.UI.Gtk as Gtk
 
-data WidgetSignals t =
+data WidgetSignals =
   WidgetSignals
 
 class IsWidget a  where
-  widgetSignals :: a t -> WidgetSignals t
+  widgetSignals :: a -> WidgetSignals
 
 listenWidgetSignals
   :: Gtk.WidgetClass widget
-  => widget -> Moment t (WidgetSignals t)
+  => widget -> MomentIO WidgetSignals
 listenWidgetSignals _ = return WidgetSignals
